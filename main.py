@@ -1,4 +1,5 @@
 import datetime
+import re
 from dataclasses import dataclass
 
 import requests
@@ -14,9 +15,14 @@ class Job:
     link: str
 
 
-def extract_job(card: Tag) -> Job:
-    title = card.find("h2", class_="title")
-    assert title is not None, "title not found"
+def extract_job(card: Tag, *, title_pattern: str | None = None) -> Job | None:
+    title = card.find(
+        "h2",
+        class_="title",
+        string=re.compile(title_pattern, re.IGNORECASE) if title_pattern else None,
+    )
+    if title is None:
+        return None
 
     company = card.find("h3", class_="company")
     assert company is not None, "company not found"
@@ -49,7 +55,16 @@ def main() -> None:
     assert isinstance(container, Tag), "#ResultsContainer not found"
 
     cards: list[Tag] = container.find_all("div", class_="card")
-    jobs = [extract_job(card) for card in cards]
+    jobs = [
+        job
+        for card in cards
+        if (
+            job := extract_job(
+                card,
+                title_pattern="python",
+            )
+        )
+    ]
 
     for job in jobs:
         print(job)
